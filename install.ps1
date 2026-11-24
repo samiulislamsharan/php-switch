@@ -118,11 +118,22 @@ function Install-PhpSwitch {
             if ($choice -ge 0) { $chosen = $found[$choice].Path }
         }
         else {
-            Write-Detail "Couldn't find your PHP versions automatically." Yellow
+            Write-Detail "Couldn't find any PHP versions on this PC." Yellow
+            if (-not $Yes) {
+                $latest = $null
+                try { $latest = Get-PhpAvailable | Select-Object -First 1 } catch { }
+                if ($latest -and (Read-YesNo "Download PHP $($latest.Version) now and make it your default?")) {
+                    Write-Host ''
+                    Install-PhpVersion -Version "$($latest.Version)" -Persist
+                    if ($env:PHP_BASE_PATH -and @(Get-PhpInstall -BasePath $env:PHP_BASE_PATH).Count) {
+                        $chosen = $env:PHP_BASE_PATH
+                    }
+                }
+            }
         }
 
         while (-not $chosen -and -not $Yes) {
-            $answer = "$(Read-Host '      Folder that holds your php-x.y.z folders (Enter to skip)')".Trim().Trim('"')
+            $answer = "$(Read-Host '      Folder that holds your php-x.y.z folders (Enter to skip, install-php later)')".Trim().Trim('"')
             if (-not $answer) { break }
             if (@(Get-PhpInstall -BasePath $answer).Count) { $chosen = $answer }
             else { Write-Detail "No php-<version> folders with php.exe inside $answer" Yellow }
@@ -139,7 +150,7 @@ function Install-PhpSwitch {
         }
     }
     if (-not $chosen) {
-        Write-Detail 'Skipped. Run Set-PhpBasePath once your PHP versions are in place.' Yellow
+        Write-Detail 'Skipped. Later, run install-php 8.4 to download PHP, or Set-PhpBasePath to point at your PHP folder.' Yellow
     }
 
     # -- 3. Profiles ---------------------------------------------------------
@@ -198,6 +209,8 @@ function Install-PhpSwitch {
     Write-Host '  switch-php 8.3              use the newest 8.3.x in this terminal'
     Write-Host '  switch-php 8.3 -Persist     ...and in every new terminal'
     Write-Host '  switch-php -List            see what is installed and active'
+    Write-Host '  install-php 8.4             download the newest PHP 8.4.x'
+    Write-Host '  remove-php 8.1              remove a version (to the Recycle Bin)'
     Write-Host '  Get-Help switch-php         more help'
     Write-Host ''
     Write-Host "If this window says switch-php isn't recognized, open a new one." -ForegroundColor DarkGray
